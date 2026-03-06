@@ -1,0 +1,60 @@
+=== VST Host Usage ===
+
+java -cp <classpath> rf.ebanina.vst.Host [options]
+
+Required Options:
+  -port, -p <port>          Port to listen on (default: 888)
+  -host, -h <host>          Host to bind to (default: localhost)
+
+Optional Options:
+  -max-channels <count>     Maximum audio channels (default: 8, max: 64)
+  -max-samples <count>      Maximum samples per channel (default: 4096, max: 65536)
+  -mode, -m <mode>          Processing mode:
+                              • echo    - Pass through unchanged (default)
+                              • silence - Output zero signal
+                              • gain    - Amplify signal 2x (may clip)
+                              • invert  - Invert phase (180° shift)
+                              • delay   - Add echo/delay effect (~50ms)
+                              • distort - Soft clipping distortion
+  -quiet, -q                Quiet mode (minimal logging)
+  -verbose, -v              Verbose mode (detailed logging, default)
+  -help, --help             Show this help message
+
+Examples:
+  # Start with defaults (localhost:888, echo mode)
+  java -cp Mizuka.jar rf.ebanina.vst.Host
+
+  # Custom port and host
+  java -cp Mizuka.jar rf.ebanina.vst.Host -port 999 -host 0.0.0.0
+
+  # High-quality audio processing
+  java -cp Mizuka.jar rf.ebanina.vst.Host -max-channels 16 -max-samples 8192
+
+  # Phase inversion (noticeable effect)
+  java -cp Mizuka.jar rf.ebanina.vst.Host -mode invert
+
+  # Echo/delay effect
+  java -cp Mizuka.jar rf.ebanina.vst.Host -mode delay
+
+  # Distortion effect
+  java -cp Mizuka.jar rf.ebanina.vst.Host -mode distort
+
+  # Network VST host (accessible from other machines)
+  java -cp Mizuka.jar rf.ebanina.vst.Host -h 0.0.0.0 -p 888 -m echo
+
+Protocol:
+  The host communicates via TCP socket using a binary protocol:
+  - Request Header:  [channels:int][samples:int][inputSize:int][outputSize:int][framesRead:int] (20 bytes)
+  - Request Data:    Audio samples as float[channel][sample] (channels × samples × 4 bytes)
+  - Response Header: [status:int][outputSamples:int] (8 bytes)
+  - Response Data:   Processed audio samples (outputSamples × 4 bytes)
+
+Exit Codes:
+  0   - Normal shutdown (Ctrl+C)
+  1   - Invalid arguments
+  2   - Port already in use
+  3   - Host binding failed
+
+For more information, visit: https://github.com/ebanina/vst-ipc-host
+
+==============================
