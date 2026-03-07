@@ -1,7 +1,7 @@
-package rf.ebanina.ebanina.Player.AudioPlugins.VST;
+package rf.ebanina.Player.AudioPlugins.VST;
 
-import rf.ebanina.ebanina.Player.AudioPlugins.IPluginWrapper;
-import rf.ebanina.ebanina.Player.AudioPlugins.PluginWrapper;
+import rf.ebanina.Player.AudioPlugins.IPluginWrapper;
+import rf.ebanina.Player.AudioPlugins.PluginWrapper;
 import rf.vst3;
 
 import java.io.File;
@@ -25,7 +25,7 @@ public final class VST3
     private boolean isDoubleProcessing;
     private boolean isRealTimeProcessing;
 
-    public static final String BIN_LIBRARIES_VST3 = File.separator + "editorhost.dll";
+    public static final String BIN_LIBRARIES_VST3 = "libraries" + File.separator + "bin" + File.separator + "vst3" + File.separator + "editorhost.dll";
 
     public VST3() {
         this(44100, 512, false, true);

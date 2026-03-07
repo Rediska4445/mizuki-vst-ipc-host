@@ -1,8 +1,8 @@
-package rf.ebanina.ebanina.Player.AudioPlugins.VST;
+package rf.ebanina.Player.AudioPlugins.VST;
 
 import com.synthbot.audioplugin.vst.vst2.JVstHost2;
-import rf.ebanina.ebanina.Player.AudioPlugins.IPluginWrapper;
-import rf.ebanina.ebanina.Player.AudioPlugins.PluginWrapper;
+import rf.ebanina.Player.AudioPlugins.IPluginWrapper;
+import rf.ebanina.Player.AudioPlugins.PluginWrapper;
 
 import java.nio.file.Path;
 import java.util.Arrays;

@@ -1,15 +1,13 @@
-package rf.ebanina.ebanina.Player.AudioPlugins;
+package rf.ebanina.Player.AudioPlugins;
 
 import com.synthbot.audioplugin.vst.JVstLoadException;
 import com.synthbot.audioplugin.vst.vst2.JVstHost2;
 import javafx.beans.property.SimpleObjectProperty;
-import rf.ebanina.ebanina.Player.AudioPlugins.VST.VST;
-import rf.ebanina.ebanina.Player.AudioPlugins.VST.VST3;
+import rf.ebanina.Player.AudioPlugins.VST.VST;
+import rf.ebanina.Player.AudioPlugins.VST.VST3;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.nio.ByteBuffer;
-import java.nio.channels.SocketChannel;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,8 +15,6 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
-
-import static rf.ebanina.vst.Host.readFully;
 
 public class PluginWrapper {
     private IPluginWrapper<?> plugin;

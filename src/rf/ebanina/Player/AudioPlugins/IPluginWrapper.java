@@ -1,4 +1,4 @@
-package rf.ebanina.ebanina.Player.AudioPlugins;
+package rf.ebanina.Player.AudioPlugins;
 
 import java.nio.file.Path;
 import java.util.Map;

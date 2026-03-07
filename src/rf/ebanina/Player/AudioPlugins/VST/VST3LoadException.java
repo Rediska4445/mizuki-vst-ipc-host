@@ -1,4 +1,4 @@
-package rf.ebanina.ebanina.Player.AudioPlugins.VST;
+package rf.ebanina.Player.AudioPlugins.VST;
 
 public class VST3LoadException extends RuntimeException {
     public VST3LoadException() {
