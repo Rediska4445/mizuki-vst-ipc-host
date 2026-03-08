@@ -9,6 +9,7 @@ import rf.ebanina.Player.AudioPlugins.VST.VST;
 import rf.ebanina.Player.AudioPlugins.VST.VST3;
 import rf.ebanina.Player.AudioPlugins.VST.VST3LoadException;
 import rf.ebanina.utils.loggining.Log;
+import rf.ebanina.utils.loggining.Prefix;
 
 import java.nio.*;
 import java.nio.channels.*;
@@ -19,6 +20,7 @@ import java.nio.charset.CharsetEncoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
@@ -35,6 +37,9 @@ public class Host
     public static final Log logger = new Log();
 
     private static final Host mainHost = new Host();
+
+    private static Log.Level low = new Log.Level().setCode("low");
+    private static Log.Level high = new Log.Level().setCode("high");
 
     public static void main(String[] args) throws Exception {
         // === ARGUMENT PARSING ===
@@ -86,6 +91,9 @@ public class Host
                     }
             }
         }
+
+        logger.levelMap.put(high, true);
+        logger.levelMap.put(low, verbose);
 
         MAX_CHANNELS = maxChannels;
         MAX_SAMPLES = maxSamples;
@@ -140,21 +148,23 @@ public class Host
                     ByteBuffer lenBuf = ByteBuffer.allocate(4);
                     int readBytes = readFully(client, lenBuf, 4);
                     if (readBytes < 0) {
-                        logger.info("[" + msgCounter + "] Client disconnected while reading length");
+                        logger.println(low, "[" + msgCounter + "] Client disconnected while reading length");
                         break;
                     }
 
                     lenBuf.flip();
                     int messageLength = lenBuf.getInt();
 
-                    logger.info("[" + msgCounter + "] Raw length bytes: " +
-                            String.format("%02X %02X %02X %02X",
-                                    lenBuf.get(0), lenBuf.get(1), lenBuf.get(2), lenBuf.get(3)) +
-                            ", messageLength=" + messageLength);
+                    if(verbose) {
+                        logger.info("[" + msgCounter + "] Raw length bytes: " +
+                                String.format("%02X %02X %02X %02X",
+                                        lenBuf.get(0), lenBuf.get(1), lenBuf.get(2), lenBuf.get(3)) +
+                                ", messageLength=" + messageLength);
+                    }
 
                     // Защита: невозможная длина
                     if (messageLength <= 0 || messageLength > cmdTextBuf.capacity()) {
-                        logger.warn("[" + msgCounter + "] Invalid message length: " + messageLength +
+                        logger.println(low, Prefix.WARN.getCode() + "[" + msgCounter + "] Invalid message length: " + messageLength +
                                 ", capacity=" + cmdTextBuf.capacity() +
                                 " -> closing client socket");
 
@@ -166,12 +176,14 @@ public class Host
                     cmdTextBuf.clear();
                     cmdTextBuf.limit(messageLength);
                     readBytes = readFully(client, cmdTextBuf, messageLength);
+
                     if (readBytes < 0) {
-                        logger.info("[" + msgCounter + "] Client disconnected during command read");
+                        logger.println(low, "[" + msgCounter + "] Client disconnected during command read");
                         break;
                     }
+
                     if (readBytes != messageLength) {
-                        logger.warn("[" + msgCounter + "] readFully for command: expected=" +
+                        logger.println(low, Prefix.WARN.getCode() + "[" + msgCounter + "] readFully for command: expected=" +
                                 messageLength + ", got=" + readBytes);
                     }
 
@@ -183,17 +195,19 @@ public class Host
                         CharBuffer charBuf = decoder.decode(cmdTextBuf);
                         commandString = charBuf.toString().trim();
                     } catch (java.nio.charset.MalformedInputException e) {
-                        logger.warn("[" + msgCounter + "] Malformed UTF-8, len=" + messageLength +
+                        logger.println(low, Prefix.WARN.getCode() + "[" + msgCounter + "] Malformed UTF-8, len=" + messageLength +
                                 ", error=" + e.getMessage());
                         continue;
                     }
 
-                    logger.info("[" + msgCounter + "] Received commandString = '" + commandString + "'");
+                    if(verbose) {
+                        logger.info("[" + msgCounter + "] Received commandString = '" + commandString + "'");
+                    }
 
                     // Парсинг команды
                     String[] parts = commandString.split(";");
                     if (parts.length == 0) {
-                        logger.warn("[" + msgCounter + "] Empty command string");
+                        logger.println(low, Prefix.WARN.getCode() + "[" + msgCounter + "] Empty command string");
                         sendTextError(client, encoder, "Empty command");
                         continue;
                     }
@@ -204,8 +218,10 @@ public class Host
                         argsList[i - 1] = parts[i].trim();
                     }
 
-                    logger.info("[" + msgCounter + "] Command = " + command +
-                            ", argsCount=" + argsList.length);
+                    if(verbose) {
+                        logger.info("[" + msgCounter + "] Command = " + command +
+                                ", argsCount=" + argsList.length);
+                    }
 
                     // Обработка
                     String response = mainHost.handleTextCommand(
@@ -219,16 +235,21 @@ public class Host
                     );
 
                     if (!response.isEmpty()) {
-                        logger.info("[" + msgCounter + "] Sending response: " + response);
+                        if(verbose) {
+                            logger.info("[" + msgCounter + "] Sending response: " + response);
+                        }
+
                         sendTextResponse(client, encoder, response);
                     } else {
-                        logger.info("[" + msgCounter + "] Response already sent by handler");
+                        if(verbose) {
+                            logger.info("[" + msgCounter + "] Response already sent by handler");
+                        }
                     }
                 }
 
-                if (client != null && client.isOpen()) {
+                if (client.isOpen()) {
                     client.close();
-                    logger.info("Client socket closed");
+                    logger.println(low, "Client socket closed");
                 }
 
             } catch (Exception e) {
@@ -298,9 +319,13 @@ public class Host
                 if (pluginWrapper == null) {
                     return "ERROR:No plugin loaded";
                 }
+
                 pluginWrapper.turnOff();
                 pluginWrapper.destroy();
                 pluginWrapper = null;
+
+                System.exit(0);
+
                 logger.info("Plugin terminated");
                 return "OK:Plugin terminated";
             }
@@ -452,38 +477,25 @@ public class Host
                 int samples    = Integer.parseInt(args[1]);
                 int framesRead = Integer.parseInt(args[2]);
 
-                // Проверяем каналы (от них зависит, сколько вообще байт нам пришло)
+                // Проверяем каналы
                 if (channels <= 0 || channels > MAX_CHANNELS) {
                     return "ERROR:Invalid channels: " + channels;
                 }
 
                 int expectedBytes = channels * samples * 4;
 
-                // Если client уже отправил binaryData, мы ДОЛЖНЫ эти байты вычитать,
-                // даже если samples некорректны, иначе поток съедет.
+                // Проверка samples, с корректным «пропуском» бинарных данных
                 if (samples <= 0 || samples > MAX_SAMPLES) {
                     if (expectedBytes > 0 && expectedBytes <= dataBuf.capacity()) {
                         dataBuf.clear();
                         dataBuf.order(ByteOrder.LITTLE_ENDIAN);
                         dataBuf.limit(expectedBytes);
-
-                        int skipped = readFully(client, dataBuf, expectedBytes);
-                        logger.warn("PROCESS_AUDIO: skipping " + skipped +
-                                " bytes due to invalid samples=" + samples +
-                                ", expectedBytes=" + expectedBytes);
-                    } else {
-                        logger.warn("PROCESS_AUDIO: invalid samples=" + samples +
-                                ", cannot skip binaryData safely (expectedBytes=" +
-                                expectedBytes + ", capacity=" + dataBuf.capacity() + ")");
+                        readFully(client, dataBuf, expectedBytes);
                     }
-
                     return "ERROR:Invalid samples: " + samples;
                 }
 
-                // Проверка на переполнение буфера
                 if (expectedBytes > dataBuf.capacity()) {
-                    // Здесь клиент уже отправил binaryData, но мы не можем его положить в dataBuf.
-                    // Всё равно читаем и выкидываем, чтобы не сломать поток.
                     dataBuf.clear();
                     dataBuf.limit(dataBuf.capacity());
                     int toSkip = dataBuf.capacity();
@@ -496,13 +508,11 @@ public class Host
                         if (r < 0) break;
                         skipped += r;
                     }
-                    logger.warn("PROCESS_AUDIO: buffer overflow, requested " + expectedBytes +
-                            " bytes, max " + dataBuf.capacity() + ", skipped=" + skipped);
                     return "ERROR:Buffer overflow: requested " + expectedBytes +
                             " bytes, max " + dataBuf.capacity();
                 }
 
-                // --- НОРМАЛЬНОЕ ЧТЕНИЕ АУДИО ДАННЫХ ---
+                // --- нормальное чтение аудио-данных ---
                 dataBuf.clear();
                 dataBuf.order(ByteOrder.LITTLE_ENDIAN);
                 dataBuf.limit(expectedBytes);
@@ -511,10 +521,7 @@ public class Host
                 if (readBytes < 0) {
                     return "ERROR:Failed to read audio data";
                 }
-                if (readBytes != expectedBytes) {
-                    logger.warn("PROCESS_AUDIO: readFully audio: expected " +
-                            expectedBytes + ", got " + readBytes);
-                }
+
                 dataBuf.flip();
 
                 FloatBuffer fb = dataBuf.asFloatBuffer();
@@ -522,6 +529,7 @@ public class Host
                 float[][] inputs  = new float[channels][samples];
                 float[][] outputs = new float[channels][samples];
 
+                // ЧТЕНИЕ: порядок (sample -> channel), как в моде
                 for (int s = 0; s < samples; s++) {
                     for (int ch = 0; ch < channels; ch++) {
                         if (fb.hasRemaining()) {
@@ -533,9 +541,19 @@ public class Host
                 if (processMode.equals("plugin") && pluginWrapper != null) {
                     pluginWrapper.processReplacing(inputs, outputs, framesRead);
 
+                    // ЗАПИСЬ: тот же порядок (sample -> channel)
                     fb.rewind();
-                    for (int ch = 0; ch < channels; ch++) {
-                        for (int s = 0; s < samples; s++) {
+                    for (int s = 0; s < samples; s++) {
+                        for (int ch = 0; ch < channels; ch++) {
+                            fb.put(outputs[ch][s]);
+                        }
+                    }
+                } else {
+                    // Без плагина — просто скопировать вход в выход
+                    fb.rewind();
+                    for (int s = 0; s < samples; s++) {
+                        for (int ch = 0; ch < channels; ch++) {
+                            outputs[ch][s] = inputs[ch][s];
                             fb.put(outputs[ch][s]);
                         }
                     }
@@ -576,6 +594,35 @@ public class Host
                         pluginWrapper.getVendorName() + ";" +
                         pluginWrapper.getSdkVersion() + ";" +
                         pluginWrapper.getPluginPath();
+            }
+
+            case "REOPEN_EDITOR": {
+                if (pluginWrapper == null) {
+                    return "ERROR:No plugin loaded";
+                }
+                try {
+                    pluginWrapper.reOpenVst3GUI();
+                    return "OK:Editor reopened";
+                } catch (Exception e) {
+                    return "ERROR:Failed to reopen editor: " + e.getMessage();
+                }
+            }
+
+            case "GET_IO": {
+                if (pluginWrapper == null) {
+                    return "ERROR:No plugin loaded";
+                }
+                return "OK:" + pluginWrapper.numInputs() + ";" + pluginWrapper.numOutputs();
+            }
+
+            case "GET_STATE_INFO": {
+                if (pluginWrapper == null) {
+                    return "ERROR:No plugin loaded";
+                }
+                String stateExt = pluginWrapper.getStateExtension();
+                String[] pluginExts = pluginWrapper.getPluginExtension();
+                String extsJoined = String.join(",", pluginExts);
+                return "OK:" + stateExt + ";" + extsJoined;
             }
 
             case "HELP": {
@@ -636,18 +683,18 @@ public class Host
     }
 
     public static PluginWrapper loadPlugin(String type, String path, int sampleRate, int blockSize, boolean isRealtime, boolean isDoubleBuffering) throws Exception {
-        logger.info("Loading plugin: " + path + " @ " + sampleRate + "Hz, " + blockSize + " samples, " + type + "-Type");
+        logger.println(low, "Loading plugin: " + path + " @ " + sampleRate + "Hz, " + blockSize + " samples, " + type + " type");
 
         if(type.equalsIgnoreCase(PluginWrapper.Type.VST3.name())) {
             VST3 vst = new VST3(sampleRate, blockSize, isDoubleBuffering, isRealtime);
 
             try {
                 if (vst.getPlugin().asyncInit(
-                        new File("C:\\Program Files\\Common Files\\VST3\\iZotope\\Ozone 9 Equalizer.vst3"),
-                        44100,
-                        512,
-                        0,
-                        true
+                        new File(path),
+                        sampleRate,
+                        blockSize,
+                        isDoubleBuffering ? 1 : 0,
+                        isRealtime
                 ).get()) {
                     vst.turnOn();
                 }
