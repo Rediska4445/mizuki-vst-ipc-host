@@ -1,0 +1,10 @@
+<component name="ArtifactManager">
+  <artifact name="ebanina-vst-ipc-host:jar2">
+    <output-path>$PROJECT_DIR$/../../libraries/classes</output-path>
+    <root id="root">
+      <element id="archive" name="ebanina-vst-ipc-host.jar">
+        <element id="module-output" name="ebanina-vst-ipc-host" />
+      </element>
+    </root>
+  </artifact>
+</component>
