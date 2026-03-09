@@ -1,9 +1,6 @@
 package rf.ebanina.vst;
 
-import com.synthbot.audioplugin.vst.vst2.JVstHost2;
-
 import com.synthbot.audioplugin.vst.vst2.JVstHost24;
-import rf.ebanina.Player.AudioPlugins.IPluginWrapper;
 import rf.ebanina.Player.AudioPlugins.PluginWrapper;
 import rf.ebanina.Player.AudioPlugins.VST.VST;
 import rf.ebanina.Player.AudioPlugins.VST.VST3;
@@ -35,14 +32,12 @@ public class Host
     static int MAX_DATA_SIZE = MAX_CHANNELS * MAX_SAMPLES;
 
     public static final Log logger = new Log();
+    private static final Log.Level low = new Log.Level().setCode("low");
+    private static final Log.Level high = new Log.Level().setCode("high");
 
     private static final Host mainHost = new Host();
 
-    private static Log.Level low = new Log.Level().setCode("low");
-    private static Log.Level high = new Log.Level().setCode("high");
-
     public static void main(String[] args) throws Exception {
-        // === ARGUMENT PARSING ===
         int port = DEFAULT_PORT;
         String host = DEFAULT_HOST;
         int maxChannels = MAX_CHANNELS;
@@ -106,7 +101,6 @@ public class Host
             logger.info("====================");
         }
 
-        // === START SERVER ===
         ServerSocketChannel server = ServerSocketChannel.open();
         server.socket().setReuseAddress(true);
         server.bind(new InetSocketAddress(host, port));
@@ -127,7 +121,6 @@ public class Host
             }
         }));
 
-        // === MAIN LOOP ===
         while (true) {
             SocketChannel client = null;
 
@@ -144,7 +137,6 @@ public class Host
                 while (client.isOpen()) {
                     msgCounter++;
 
-                    // === ЧТЕНИЕ ДЛИНЫ ===
                     ByteBuffer lenBuf = ByteBuffer.allocate(4);
                     int readBytes = readFully(client, lenBuf, 4);
                     if (readBytes < 0) {
@@ -162,7 +154,6 @@ public class Host
                                 ", messageLength=" + messageLength);
                     }
 
-                    // Защита: невозможная длина
                     if (messageLength <= 0 || messageLength > cmdTextBuf.capacity()) {
                         logger.println(low, Prefix.WARN.getCode() + "[" + msgCounter + "] Invalid message length: " + messageLength +
                                 ", capacity=" + cmdTextBuf.capacity() +
@@ -172,7 +163,6 @@ public class Host
                         break;
                     }
 
-                    // === ЧТЕНИЕ ТЕКСТА ===
                     cmdTextBuf.clear();
                     cmdTextBuf.limit(messageLength);
                     readBytes = readFully(client, cmdTextBuf, messageLength);
@@ -204,7 +194,6 @@ public class Host
                         logger.info("[" + msgCounter + "] Received commandString = '" + commandString + "'");
                     }
 
-                    // Парсинг команды
                     String[] parts = commandString.split(";");
                     if (parts.length == 0) {
                         logger.println(low, Prefix.WARN.getCode() + "[" + msgCounter + "] Empty command string");
@@ -223,7 +212,6 @@ public class Host
                                 ", argsCount=" + argsList.length);
                     }
 
-                    // Обработка
                     String response = mainHost.handleTextCommand(
                             command,
                             argsList,
@@ -477,14 +465,12 @@ public class Host
                 int samples    = Integer.parseInt(args[1]);
                 int framesRead = Integer.parseInt(args[2]);
 
-                // Проверяем каналы
                 if (channels <= 0 || channels > MAX_CHANNELS) {
                     return "ERROR:Invalid channels: " + channels;
                 }
 
                 int expectedBytes = channels * samples * 4;
 
-                // Проверка samples, с корректным «пропуском» бинарных данных
                 if (samples <= 0 || samples > MAX_SAMPLES) {
                     if (expectedBytes > 0 && expectedBytes <= dataBuf.capacity()) {
                         dataBuf.clear();
@@ -512,7 +498,6 @@ public class Host
                             " bytes, max " + dataBuf.capacity();
                 }
 
-                // --- нормальное чтение аудио-данных ---
                 dataBuf.clear();
                 dataBuf.order(ByteOrder.LITTLE_ENDIAN);
                 dataBuf.limit(expectedBytes);
@@ -529,7 +514,6 @@ public class Host
                 float[][] inputs  = new float[channels][samples];
                 float[][] outputs = new float[channels][samples];
 
-                // ЧТЕНИЕ: порядок (sample -> channel), как в моде
                 for (int s = 0; s < samples; s++) {
                     for (int ch = 0; ch < channels; ch++) {
                         if (fb.hasRemaining()) {
@@ -541,7 +525,6 @@ public class Host
                 if (processMode.equals("plugin") && pluginWrapper != null) {
                     pluginWrapper.processReplacing(inputs, outputs, framesRead);
 
-                    // ЗАПИСЬ: тот же порядок (sample -> channel)
                     fb.rewind();
                     for (int s = 0; s < samples; s++) {
                         for (int ch = 0; ch < channels; ch++) {
@@ -549,7 +532,6 @@ public class Host
                         }
                     }
                 } else {
-                    // Без плагина — просто скопировать вход в выход
                     fb.rewind();
                     for (int s = 0; s < samples; s++) {
                         for (int ch = 0; ch < channels; ch++) {
@@ -559,7 +541,6 @@ public class Host
                     }
                 }
 
-                // Отправка ответа (текст + бинарные данные)
                 sendTextResponse(client, encoder, "OK:" + channels + ";" + samples);
 
                 dataBuf.rewind();
@@ -641,9 +622,10 @@ public class Host
         try {
             InputStream is = Host.class.getResourceAsStream("usage.txt");
             if (is == null) {
-                // Fallback if file not found
                 is = Thread.currentThread().getContextClassLoader()
-                        .getResourceAsStream("rf/ebanina/vst/usage.txt");
+                        .getResourceAsStream("rf/ebanina/vst/usage_" + Locale.getDefault().getLanguage() + ".txt");
+
+                logger.info("Path to full usage: rf/ebanina/vst/usage_" + Locale.getDefault().getLanguage() + ".txt");
             }
 
             if (is != null) {
@@ -655,7 +637,6 @@ public class Host
                     }
                 }
             } else {
-                // Minimal usage if file not found
                 System.out.println("\n=== VST Host ===");
                 System.out.println("Usage: java -cp <classpath> rf.ebanina.vst.Host [options]");
                 System.out.println("Options: -port, -host, -max-channels, -max-samples, -mode, -quiet, -help");
