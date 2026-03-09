@@ -1,0 +1,64 @@
+=== VST/VST3 IPC Host ===
+
+java -cp <classpath> rf.ebanina.vst.Host [options]
+
+Опции запуска:
+  -port, -p <порт>          Порт TCP сервера (по умолчанию: 888)
+  -host, -h <хост>          IP для привязки (по умолчанию: localhost)
+  -max-channels <каналы>    Макс. каналов аудио (по умолчанию: 8)
+  -max-samples <сэмплы>     Макс. сэмплов на канал (по умолчанию: 4096)
+  -mode, -m <режим>         Режим обработки (по умолчанию: plugin)
+  -quiet, -q                Тихий режим (минимум логов)
+  -verbose, -v              Подробные логи (по умолчанию)
+  -help, --help             Показать справку
+
+Режимы обработки (-mode):
+  • echo    - Пропуск без изменений
+  • silence - Тишина (нулевые сэмплы)
+  • gain    - Усиление x2 (возможны клипы)
+  • invert  - Инверсия фазы (180°)
+  • delay   - Эхо/задержка (~50мс)
+  • distort - Мягкий дисторшн
+  • plugin  - VST/VST3 плагин (по умолчанию)
+
+Примеры:
+  # Базовый запуск (localhost:888, plugin mode)
+  java -cp Mizuka.jar rf.ebanina.vst.Host
+
+  # Сетевой доступ (все интерфейсы)
+  java -cp Mizuka.jar rf.ebanina.vst.Host -host 0.0.0.0 -port 999
+
+  # Профессиональный аудио (16 каналов, 8192 сэмплов)
+  java -cp Mizuka.jar rf.ebanina.vst.Host -max-channels 16 -max-samples 8192
+
+  # Тестовый режим без плагина (эхо)
+  java -cp Mizuka.jar rf.ebanina.vst.Host -mode echo
+
+Протокол IPC (TCP):
+  • Команды: INIT_PLUGIN, PROCESS_AUDIO, SET_PARAMETER, GET_PARAMETER и др.
+  • Аудио: float32, порядок sample-major (сэмпл→канал)
+  • Формат: [длина:int32][команда+параметры][аудио данные]
+
+Поддерживаемые команды:
+  INIT_PLUGIN(type;path;sr;bs;rt;double)     Загрузка VST/VST3
+  PROCESS_AUDIO(channels;samples;framesRead) Обработка аудио
+  SET_PARAMETER(idx;value)                   Установка параметра
+  GET_PARAMETER(idx)                         Чтение параметра
+  GET_PARAM_COUNT                            Кол-во параметров
+  OPEN_EDITOR                                Открыть GUI
+  SAVE_STATE                                 Сохранить пресет
+  LOAD_STATE(base64)                         Загрузить пресет
+  TERMINATE_PLUGIN                           Завершить работу
+  HELP                                       Список команд
+
+Логи:
+  • ipc-out.log - информация
+  • ipc-err.log - ошибки
+
+Примечания:
+  • Автоопределение VST/VST3 по расширению файла
+  • Поддержка GUI редакторов плагинов
+  • Сохранение/загрузка состояний (Base64)
+  • Graceful shutdown при Ctrl+C
+
+==============================
