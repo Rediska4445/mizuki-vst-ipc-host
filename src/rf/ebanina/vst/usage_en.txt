@@ -1,64 +1,88 @@
 === VST/VST3 IPC Host ===
 
-java -cp <classpath> rf.ebanina.vst.Host [options]
+java -cp  rf.ebanina.vst.Host [options]
 
-Опции запуска:
-  -port, -p <порт>          Порт TCP сервера (по умолчанию: 888)
-  -host, -h <хост>          IP для привязки (по умолчанию: localhost)
-  -max-channels <каналы>    Макс. каналов аудио (по умолчанию: 8)
-  -max-samples <сэмплы>     Макс. сэмплов на канал (по умолчанию: 4096)
-  -mode, -m <режим>         Режим обработки (по умолчанию: plugin)
-  -quiet, -q                Тихий режим (минимум логов)
-  -verbose, -v              Подробные логи (по умолчанию)
-  -help, --help             Показать справку
+Launch options:
+  -port, -p       TCP server port (default: 888)
+  -host, -h       IP to bind to (default: localhost)
+  -max-channels  Max audio channels (default: 8)
+  -max-samples  Max samples per channel (default: 4096)
+  -mode, -m       Processing mode (default: plugin)
+  -quiet, -q            Quiet mode (minimal logs)
+  -verbose, -v          Verbose logs (default)
+  -help, --help         Show help
 
-Режимы обработки (-mode):
-  • echo    - Пропуск без изменений
-  • silence - Тишина (нулевые сэмплы)
-  • gain    - Усиление x2 (возможны клипы)
-  • invert  - Инверсия фазы (180°)
-  • delay   - Эхо/задержка (~50мс)
-  • distort - Мягкий дисторшн
-  • plugin  - VST/VST3 плагин (по умолчанию)
+Processing modes (-mode):
+  • echo     - Pass-through without changes
+  • silence - Silence (zero samples)
+  • gain    - Gain x2 (clipping possible)
+  • invert  - Phase inversion (180°)
+  • delay   - Echo/delay (~50ms)
 
-Примеры:
-  # Базовый запуск (localhost:888, plugin mode)
+  • distort - Soft distortion
+
+  • plugin  - VST/VST3 plugin (default)
+
+Examples:
+
+  # Basic launch (localhost:888, plugin mode)
+
   java -cp Mizuka.jar rf.ebanina.vst.Host
 
-  # Сетевой доступ (все интерфейсы)
+# Network access (all interfaces)
+
   java -cp Mizuka.jar rf.ebanina.vst.Host -host 0.0.0.0 -port 999
 
-  # Профессиональный аудио (16 каналов, 8192 сэмплов)
+# Professional audio (16 channels, 8192 samples)
+
   java -cp Mizuka.jar rf.ebanina.vst.Host -max-channels 16 -max-samples 8192
 
-  # Тестовый режим без плагина (эхо)
+# Test mode without plugin (echo)
+
   java -cp Mizuka.jar rf.ebanina.vst.Host -mode echo
 
-Протокол IPC (TCP):
-  • Команды: INIT_PLUGIN, PROCESS_AUDIO, SET_PARAMETER, GET_PARAMETER и др.
-  • Аудио: float32, порядок sample-major (сэмпл→канал)
-  • Формат: [длина:int32][команда+параметры][аудио данные]
+IPC Protocol (TCP):
 
-Поддерживаемые команды:
-  INIT_PLUGIN(type;path;sr;bs;rt;double)     Загрузка VST/VST3
-  PROCESS_AUDIO(channels;samples;framesRead) Обработка аудио
-  SET_PARAMETER(idx;value)                   Установка параметра
-  GET_PARAMETER(idx)                         Чтение параметра
-  GET_PARAM_COUNT                            Кол-во параметров
-  OPEN_EDITOR                                Открыть GUI
-  SAVE_STATE                                 Сохранить пресет
-  LOAD_STATE(base64)                         Загрузить пресет
-  TERMINATE_PLUGIN                           Завершить работу
-  HELP                                       Список команд
+  • Commands: INIT_PLUGIN, PROCESS_AUDIO, SET_PARAMETER, GET_PARAMETER, etc.
 
-Логи:
-  • ipc-out.log - информация
-  • ipc-err.log - ошибки
+  • Audio: float32, sample-major order (sample→channel)
 
-Примечания:
-  • Автоопределение VST/VST3 по расширению файла
-  • Поддержка GUI редакторов плагинов
-  • Сохранение/загрузка состояний (Base64)
-  • Graceful shutdown при Ctrl+C
+  • Format: [length:int32][command+parameters][audio data]
 
-==============================
+Supported commands:
+
+  INIT_PLUGIN(type;path;sr;bs;rt;double)     Load VST/VST3
+
+  PROCESS_AUDIO(channels;samples;framesRead) Process audio
+
+  SET_PARAMETER(idx;value)                   Set parameter
+
+  GET_PARAMETER(idx)                         Read parameter
+
+  GET_PARAM_COUNT                            Parameter count
+
+  OPEN_EDITOR                                Open GUI
+
+  SAVE_STATE                                 Save preset
+
+  LOAD_STATE(base64)                         Load preset
+
+  TERMINATE_PLUGIN                           Terminate plugin
+
+  HELP                                       List of commands
+
+Logs:
+
+  • ipc-out.log - information
+
+  • ipc-err.log - errors
+
+Notes:
+
+  • VST/VST3 autodetection by file extension
+
+  • VST plugin editor GUI support
+
+  • State saving/loading (Base64)
+
+  • Graceful shutdown on Ctrl+C
